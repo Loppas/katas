@@ -11,89 +11,129 @@ L	      50
 C	      100
 D	      500
 M	      1000
+
+✅ Repetition Rules
+Only I, X, C, and M can be repeated.
+
+They can be repeated at most 3 times in a row.
+
+✅ III = 3
+
+❌ IIII is invalid (4 is IV)
+
+V, L, and D can never be repeated.
+
+➖ Subtractive Notation Rules
+Sometimes a smaller numeral appears before a larger one to indicate subtraction:
+
+I can be placed before V (5) and X (10) → IV = 4, IX = 9
+
+X can come before L (50) and C (100) → XL = 40, XC = 90
+
+C can come before D (500) and M (1000) → CD = 400, CM = 900
+
+🛑 Other combinations like IL, IC, or XD are invalid.
+
+🔁 Order Rules
+Numerals are written in descending order of value from left to right.
+
+✅ MCMXC = 1990 (1000 + (1000−100) + (100−10))
+
+❌ IC is invalid (should be XCIX = 99)
+
+🔢 Standard Roman numerals only go up to 3,999 (MMMCMXCIX).
+
 */
 
 import { expect, test } from "vitest";
+import fc from "fast-check";
 
-type numerals = "I" | "V" | "X" | "L" | "C" | "D" | "M";
+type glyphs =
+  | "I"
+  | "IV"
+  | "V"
+  | "IX"
+  | "X"
+  | "XL"
+  | "L"
+  | "XC"
+  | "C"
+  | "CD"
+  | "D"
+  | "CM"
+  | "M";
 
-type NumeralValue = {
-  value: number;
-  numeral: numerals;
+const mappedGlyphs: { [key in glyphs]: number } = {
+  I: 1,
+  IV: 4,
+  V: 5,
+  IX: 9,
+  X: 10,
+  XL: 40,
+  L: 50,
+  XC: 90,
+  C: 100,
+  CD: 400,
+  D: 500,
+  CM: 900,
+  M: 1000,
 };
 
-const numeralValues: NumeralValue[] = [
-  { value: 1, numeral: "I" },
-  { value: 5, numeral: "V" },
-  { value: 10, numeral: "X" },
-  { value: 50, numeral: "L" },
-  { value: 100, numeral: "C" },
-  { value: 500, numeral: "D" },
-  { value: 1000, numeral: "M" },
-];
+const convertNumberIntoRomanNumerals = (input: number) => {
+  const entries = Object.entries(mappedGlyphs).sort((a, b) => {
+    return b[1] - a[1];
+  });
 
-const getMaxNumeralValue = (value: number): NumeralValue | undefined => {
-  // TODO: map to keys
+  let str = entries.reduce<string>(
+    (acc, [roman, value]: (typeof entries)[number]) => {
+      while (input >= value) {
+        acc += roman;
+        input -= value;
+      }
 
-  for (var i = numeralValues.length - 1; i >= 0; i--) {
-    if (value >= numeralValues[i].value) {
-      return numeralValues[i];
+      return acc;
+    },
+    ""
+  );
+
+  return str;
+};
+
+const convertRomanNumeralsIntoNumber = (input: string) => {
+  const entries = Object.entries(mappedGlyphs).sort((a, b) => {
+    return b[0].length - a[0].length;
+  });
+
+  let str = entries.reduce((acc, [roman, value]: (typeof entries)[number]) => {
+    while (input.includes(roman)) {
+      acc += value;
+      input = input.replace(roman, "");
     }
-  }
 
-  return undefined;
+    return acc;
+  }, 0);
+
+  return str;
 };
 
-const numberToNumerals = (
-  remainderValue: number,
-  accumulatedNumeral: string
-): string => {
-  // TODO: handle 0
-  if (remainderValue === 1) {
-    return accumulatedNumeral + "I";
-  }
-
-  // get max from current remainder (fit to numerals)
-  const maxFromRemainder = getMaxNumeralValue(remainderValue);
-
-  console.log("remainder: %d, accum: %s", remainderValue, accumulatedNumeral);
-
-  if (maxFromRemainder) {
-    accumulatedNumeral += maxFromRemainder.numeral;
-
-    return numberToNumerals(
-      remainderValue - maxFromRemainder.value,
-      accumulatedNumeral
-    );
-  }
-
-  return accumulatedNumeral;
-};
-
-const convertNumberIntoRomanNumerals = (value: number): string => {
-  return numberToNumerals(value, "");
-};
-
-test("Converts 1 into roman numerals", () => {
+test("Converts into roman numerals", () => {
   expect(convertNumberIntoRomanNumerals(1)).toBe("I");
-});
-
-test("Converts 2 into roman numerals", () => {
   expect(convertNumberIntoRomanNumerals(5)).toBe("V");
-});
-
-test("Convert 23 into roman numerals", () => {
-  expect(convertNumberIntoRomanNumerals(23)).toBe("XXIII");
-});
-
-test("Convert 32 into roman numerals", () => {
-  expect(convertNumberIntoRomanNumerals(32)).toBe("XXXII");
-});
-
-test("Convert 0 into roman numerals", () => {
+  expect(convertNumberIntoRomanNumerals(4)).toBe("IV");
+  expect(convertNumberIntoRomanNumerals(9)).toBe("IX");
+  expect(convertNumberIntoRomanNumerals(6)).toBe("VI");
+  expect(convertNumberIntoRomanNumerals(8)).toBe("VIII");
+  expect(convertNumberIntoRomanNumerals(90)).toBe("XC");
+  expect(convertNumberIntoRomanNumerals(1988)).toBe("MCMLXXXVIII");
   expect(convertNumberIntoRomanNumerals(0)).toBe("");
 });
 
-test("Convert 3345 into roman numerals", () => {
-  expect(convertNumberIntoRomanNumerals(3345)).toBe("MMMCCCXLV");
+test("Convert to Roman Numerals and back to number", () => {
+  fc.assert(
+    fc.property(fc.integer({ min: 0, max: 300000 }), (input) => {
+      const romanNumerals = convertNumberIntoRomanNumerals(input);
+      const number = convertRomanNumeralsIntoNumber(romanNumerals);
+      expect(number).toBe(input);
+    })
+  );
 });
